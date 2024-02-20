@@ -7,7 +7,7 @@ from .settings import Settings
 
 
 def main():
-    dotenv.load_dotenv()
+    dotenv.load_dotenv(override=True)
     token = os.getenv("BOT_TOKEN")
 
     bot = GoOutside(token)

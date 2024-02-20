@@ -14,6 +14,8 @@ black = "^24.2.0"
 isort = "^5.13.2"
 loguru = "^0.7.2"
 disnake-jishaku = "^2.6.5"
+psutil = "^5.9.8"
+pygit2 = "^1.14.1"
 
 
 [build-system]

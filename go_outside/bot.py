@@ -2,7 +2,7 @@ import disnake
 from disnake.ext import commands
 from loguru import logger
 
-from .settings import Settings
+from go_outside.settings import Settings
 
 
 class GoOutside(commands.AutoShardedBot):
@@ -14,6 +14,7 @@ class GoOutside(commands.AutoShardedBot):
             help_command=Settings.help_command,
             intents=Settings.intents,
             allowed_mentions=Settings.allowed_mentions,
+            activity=Settings.activity,
         )
         self.__token = token
 
