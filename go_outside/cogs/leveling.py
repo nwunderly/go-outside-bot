@@ -76,11 +76,11 @@ class Leveling(commands.Cog):
             message.author, "message_edit", to_unix(message.created_at)
         )
 
-    @commands.Cog.listener()
-    async def on_message_delete(self, message: disnake.Message):
-        await self.process_action(
-            message.author, "message_delete", to_unix(message.created_at)
-        )
+    # @commands.Cog.listener()
+    # async def on_message_delete(self, message: disnake.Message):
+    #     await self.process_action(
+    #         message.author, "message_delete", to_unix(message.created_at)
+    #     )
 
     @commands.Cog.listener()
     async def on_reaction_add(self, reaction: disnake.Reaction, user: disnake.Member):

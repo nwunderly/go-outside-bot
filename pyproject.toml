@@ -16,6 +16,7 @@ loguru = "^0.7.2"
 disnake-jishaku = "^2.6.5"
 psutil = "^5.9.8"
 pygit2 = "^1.14.1"
+tortoise-orm = "^0.20.0"
 
 
 [build-system]
