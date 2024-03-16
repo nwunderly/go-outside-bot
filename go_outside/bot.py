@@ -21,6 +21,10 @@ class GoOutside(commands.AutoShardedBot):
     async def on_ready(self):
         logger.info(f"Logged in as {self.user}.")
 
+    # TODO
+    async def prefix(self, message: disnake.Message) -> str:
+        return ""
+
     def run(self):
         super().run(self.__token)
 

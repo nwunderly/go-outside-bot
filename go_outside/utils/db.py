@@ -6,8 +6,8 @@ from loguru import logger
 from go_outside.settings import Settings
 
 
-config_cache = {}  # {guild_id: Config}
-user_cache = {}  # {user_id: User}
+config_cache: dict[int, "Config"] = {}  # {guild_id: Config}
+user_cache: dict[int, "User"] = {}  # {user_id: User}
 
 
 async def edit_record(record, **kwargs):
@@ -21,8 +21,8 @@ async def edit_record(record, **kwargs):
 
 
 class Config(Model):
-    guild_id = fields.BigIntField(pk=True, generated=False)
-    prefix = fields.TextField(default=Settings.prefix)
+    guild_id: int = fields.BigIntField(pk=True, generated=False)
+    prefix: str = fields.TextField(default=Settings.prefix)
 
 
 """
@@ -36,11 +36,11 @@ class Config(Model):
 
 
 class User(Model):
-    user_id = fields.BigIntField(pk=True, generated=False)
-    last_action_type = fields.TextField()
-    last_action_timestamp = fields.BigIntField()
-    personal_best = fields.BigIntField()
-    points = fields.BigIntField()
+    user_id: int = fields.BigIntField(pk=True, generated=False)
+    last_action_type: str = fields.TextField()
+    last_action_timestamp: int = fields.BigIntField()
+    personal_best: int = fields.BigIntField()
+    points: int = fields.BigIntField()
 
 
 async def init(db_url):

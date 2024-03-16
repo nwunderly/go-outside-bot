@@ -1,11 +1,13 @@
 import datetime
 import time
+import typing
 
 import disnake
 from disnake.ext import commands
 from loguru import logger
 
 from go_outside.settings import Settings
+from go_outside.utils import db
 
 
 def to_unix(dt: datetime.datetime) -> float:
@@ -24,21 +26,23 @@ class Leveling(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-        # user_id: (action, timestamp)
-        self.last_action_cache: dict[int, tuple[str, float]] = {}
-        # user_id: duration
-        self.personal_best_cache: dict[int, int] = {}
-        # user_id: points
-        self.points_cache: dict[int, int] = {}
+        # # user_id: (action, timestamp)
+        # self.last_action_cache: dict[int, tuple[str, float]] = {}
+        # # user_id: duration
+        # self.personal_best_cache: dict[int, int] = {}
+        # # user_id: points
+        # self.points_cache: dict[int, int] = {}
 
     async def process_action(self, user: disnake.Member, action: str, timestamp: float):
         """When we detect an action by a user, update cache and assign points."""
+        timestamp_int: int = int(timestamp)
+
         # ignore bots
         if user.bot:
             return
 
         # ignore users who haven't opted in
-        if user.id not in self.last_action_cache:
+        if user.id not in db.user_cache:
             return
             # logger.debug(
             #     f"adding user to cache | {user.id=} {user.name=} | {action=} {timestamp=}"
@@ -47,18 +51,26 @@ class Leveling(commands.Cog):
             # self.points_cache[user.id] = 0
             # return
 
-        last_action, last_timestamp = self.last_action_cache[user.id]
-        time_since = timestamp - last_timestamp
-        points = calculate_points(time_since)
+        db_user = db.user_cache[user.id]
 
-        new_points = self.points_cache[user.id] + points
+        last_action_type = db_user.last_action_type
+        last_action_timestamp = db_user.last_action_timestamp
+        time_since = timestamp_int - last_action_timestamp
+        points_to_add = calculate_points(time_since)
+
+        new_points = db_user.points + points_to_add
         logger.debug(
-            f"updating user | {user.id=} {user.name=} | {action=} {timestamp=} | {last_action=} {last_timestamp=} "
-            f"| {time_since=} {points=} | {new_points=}"
+            f"updating user | {user.id=} {user.name=} | {action=} {timestamp_int=} | {last_action_type=} {last_action_timestamp=} "
+            f"| {time_since=} {points_to_add=} | {new_points=}"
         )
 
-        self.points_cache[user.id] += points
-        self.last_action_cache[user.id] = (action, timestamp)
+        # self.points_cache[user.id] += points_to_add
+        # self.last_action_cache[user.id] = (action, timestamp_int)
+
+        # TODO: don't update the database every time PLEASE GOD
+        db_user.points = new_points
+        db_user.last_action_type = last_action_type
+        db_user.last_action_timestamp = last_action_timestamp
 
     async def process_presence(self, before: disnake.Member, after: disnake.Member):
         """Handle things like presence updates"""
@@ -105,12 +117,14 @@ class Leveling(commands.Cog):
     @commands.command()
     async def register(self, ctx: commands.Context):
         """Join the game!"""
-        self.last_action_cache[ctx.author.id] = (
-            "message_create",
-            to_unix(ctx.message.created_at),
+        db_user = await db.User.create(
+            user_id=ctx.author.id,
+            last_action_type="message_create",
+            last_action_timestamp=to_unix(ctx.message.created_at),
+            personal_best=0,
+            points=0,
         )
-        self.personal_best_cache[ctx.author.id] = 0
-        self.points_cache[ctx.author.id] = 0
+        db.user_cache[ctx.author.id] = db_user
         await ctx.send(
             f"Signup successful! Leave the game with `{Settings.prefix}unregister`."
         )
@@ -118,27 +132,28 @@ class Leveling(commands.Cog):
     @commands.command()
     async def unregister(self, ctx: commands.Context):
         """Delete your data from the bot and opt out of the game."""
-        del self.last_action_cache[ctx.author.id]
-        del self.personal_best_cache[ctx.author.id]
-        del self.points_cache[ctx.author.id]
+        await db.User.filter(user_id=ctx.author.id).delete()
+        del db.user_cache[ctx.author.id]
         await ctx.send("Successfully deleted your data from the bot.")
 
     @commands.command()
-    async def rank(self, ctx: commands.Context):
+    async def rank(self, ctx: commands.Context, user: typing.Union[disnake.User, disnake.Member] = None):
         """View level information."""
-        points = self.points_cache[ctx.author.id]
-        await ctx.send(f"You have {points} points")
+        if not user:
+            user = ctx.author
 
-    # TODO: put this functionality into rank command
-    @commands.command()
-    async def rankuser(self, ctx: commands.Context, user: disnake.User):
-        """View level information for a user."""
-        current_points = self.points_cache.get(user.id)
-        if current_points is None:
-            return (await ctx.send("no"), None)[1]
-        time_since = time.time() - self.last_action_cache[user.id][1]
-        points = current_points + calculate_points(time_since)
-        await ctx.send(f"{user} has {points} points (estimated)")
+        prefix = await self.bot.prefix(ctx.message)
+
+        if user.id not in db.user_cache:
+            await ctx.send(f"You are not registered with the bot, use `{prefix}register` to register.")
+
+        db_user = db.user_cache[user.id]
+        points = db_user.points
+
+        if user == ctx.author:
+            await ctx.send(f"You have {points} points")
+        else:
+            await ctx.send(f"{user} has {points} points (estimated)")
 
 
 def setup(bot):
