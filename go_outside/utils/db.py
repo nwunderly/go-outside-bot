@@ -1,10 +1,10 @@
 import json
+
+from loguru import logger
 from tortoise import Tortoise, fields
 from tortoise.models import Model
-from loguru import logger
 
 from go_outside.settings import Settings
-
 
 config_cache: dict[int, "Config"] = {}  # {guild_id: Config}
 user_cache: dict[int, "User"] = {}  # {user_id: User}

@@ -60,8 +60,12 @@ class Leveling(commands.Cog):
 
         new_points = db_user.points + points_to_add
         logger.debug(
-            f"updating user | {user.id=} {user.name=} | {action=} {timestamp_int=} | {last_action_type=} {last_action_timestamp=} "
-            f"| {time_since=} {points_to_add=} | {new_points=}"
+            f"updating user "
+            f"| {user.id=} {user.name=} "
+            f"| {action=} {timestamp_int=} "
+            f"| {last_action_type=} {last_action_timestamp=} "
+            f"| {time_since=} {points_to_add=} "
+            f"| {new_points=}"
         )
 
         # self.points_cache[user.id] += points_to_add
@@ -71,6 +75,8 @@ class Leveling(commands.Cog):
         db_user.points = new_points
         db_user.last_action_type = last_action_type
         db_user.last_action_timestamp = last_action_timestamp
+        db.user_cache[user.id] = db_user
+        await db_user.save()
 
     async def process_presence(self, before: disnake.Member, after: disnake.Member):
         """Handle things like presence updates"""
@@ -125,9 +131,8 @@ class Leveling(commands.Cog):
             points=0,
         )
         db.user_cache[ctx.author.id] = db_user
-        await ctx.send(
-            f"Signup successful! Leave the game with `{Settings.prefix}unregister`."
-        )
+        prefix = await self.bot.prefix(ctx.message)
+        await ctx.send(f"Signup successful! Leave the game with `{prefix}unregister`.")
 
     @commands.command()
     async def unregister(self, ctx: commands.Context):
@@ -137,7 +142,11 @@ class Leveling(commands.Cog):
         await ctx.send("Successfully deleted your data from the bot.")
 
     @commands.command()
-    async def rank(self, ctx: commands.Context, user: typing.Union[disnake.User, disnake.Member] = None):
+    async def rank(
+        self,
+        ctx: commands.Context,
+        user: typing.Union[disnake.User, disnake.Member] = None,
+    ):
         """View level information."""
         if not user:
             user = ctx.author
@@ -145,7 +154,12 @@ class Leveling(commands.Cog):
         prefix = await self.bot.prefix(ctx.message)
 
         if user.id not in db.user_cache:
-            await ctx.send(f"You are not registered with the bot, use `{prefix}register` to register.")
+            if user == ctx.author:
+                await ctx.send(
+                    f"You are not registered with the bot, use `{prefix}register` to register."
+                )
+            else:
+                await ctx.send(f"This user is not registered with the bot.")
 
         db_user = db.user_cache[user.id]
         points = db_user.points
