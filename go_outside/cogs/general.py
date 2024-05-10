@@ -16,10 +16,10 @@ from go_outside.utils.format import approximate_timedelta
 class General(commands.Cog):
     """General commands."""
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
 
-    def format_commit(self, commit):
+    def format_commit(self, commit: pygit2.Commit):
         short, _, _ = commit.message.partition("\n")
         short_sha2 = commit.hex[0:6]
         commit_tz = datetime.timezone(
@@ -36,7 +36,7 @@ class General(commands.Cog):
         )
         return f"[`{short_sha2}`]({Settings.repo_url}/commit/{commit.hex}) {short} ({offset} ago)"
 
-    def get_last_commits(self, count=3):
+    def get_last_commits(self, count: int = 3):
         repo = pygit2.Repository(".git")
         commits = list(
             itertools.islice(
