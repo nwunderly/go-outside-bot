@@ -11,19 +11,27 @@ from go_outside.utils import db
 
 
 def to_unix(dt: datetime.datetime) -> float:
+    """Convert a datetime object to a unix time int."""
     return time.mktime(dt.timetuple())
 
 
 def calculate_points(time_since: float) -> int:
+    """Calculation determining how many points to assign to a user after an event."""
     # TODO: decide how to scale points
     # points = (time_since // 3600) ** 2
     return int((time_since // Settings.Leveling.points_scaling) ** 2)
 
 
+def calculate_level(points: int) -> int:
+    """Calculation determining what level a user is based on their points."""
+    # TODO make this configurable, decide how to scale level
+    return int(points ** (1 / 4))
+
+
 class Leveling(commands.Cog):
     """Leveling system commands."""
 
-    def __init__(self, bot):
+    def __init__(self, bot: commands.Bot):
         self.bot = bot
 
         # # user_id: (action, timestamp)
@@ -41,17 +49,21 @@ class Leveling(commands.Cog):
         if user.bot:
             return
 
-        # ignore users who haven't opted in
-        if user.id not in db.user_cache:
-            return
-            # logger.debug(
-            #     f"adding user to cache | {user.id=} {user.name=} | {action=} {timestamp=}"
-            # )
-            # self.last_action_cache[user.id] = (action, timestamp)
-            # self.points_cache[user.id] = 0
-            # return
+        # # ignore users who haven't opted in
+        # if user.id not in db.user_cache:
+        #     return
+        #     # logger.debug(
+        #     #     f"adding user to cache | {user.id=} {user.name=} | {action=} {timestamp=}"
+        #     # )
+        #     # self.last_action_cache[user.id] = (action, timestamp)
+        #     # self.points_cache[user.id] = 0
+        #     # return
 
-        db_user = db.user_cache[user.id]
+        db_user = await db.get_user(user.id)  # will be None if user hasn't opted in
+
+        # ignore users who haven't opted in
+        if db_user is None:
+            return
 
         last_action_type = db_user.last_action_type
         last_action_timestamp = db_user.last_action_timestamp
@@ -72,11 +84,17 @@ class Leveling(commands.Cog):
         # self.last_action_cache[user.id] = (action, timestamp_int)
 
         # TODO: don't update the database every time PLEASE GOD
-        db_user.points = new_points
-        db_user.last_action_type = last_action_type
-        db_user.last_action_timestamp = last_action_timestamp
-        db.user_cache[user.id] = db_user
-        await db_user.save()
+        # db_user.points = new_points
+        # db_user.last_action_type = last_action_type
+        # db_user.last_action_timestamp = last_action_timestamp
+        # db.user_cache[user.id] = db_user
+        # await db_user.save()
+        await db.update_user(
+            db_user,
+            points=new_points,
+            last_action_type=last_action_type,
+            last_action_timestamp=timestamp,
+        )
 
     async def process_presence(self, before: disnake.Member, after: disnake.Member):
         """Handle things like presence updates"""
@@ -123,14 +141,7 @@ class Leveling(commands.Cog):
     @commands.command()
     async def register(self, ctx: commands.Context):
         """Join the game!"""
-        db_user = await db.User.create(
-            user_id=ctx.author.id,
-            last_action_type="message_create",
-            last_action_timestamp=to_unix(ctx.message.created_at),
-            personal_best=0,
-            points=0,
-        )
-        db.user_cache[ctx.author.id] = db_user
+        await db.create_user(user_id=ctx.author.id)
         prefix = await self.bot.prefix(ctx.message)
         await ctx.send(f"Signup successful! Leave the game with `{prefix}unregister`.")
 
@@ -138,7 +149,7 @@ class Leveling(commands.Cog):
     async def unregister(self, ctx: commands.Context):
         """Delete your data from the bot and opt out of the game."""
         await db.User.filter(user_id=ctx.author.id).delete()
-        del db.user_cache[ctx.author.id]
+        del db.UserCache.user_cache[ctx.author.id]
         await ctx.send("Successfully deleted your data from the bot.")
 
     @commands.command()
@@ -152,16 +163,18 @@ class Leveling(commands.Cog):
             user = ctx.author
 
         prefix = await self.bot.prefix(ctx.message)
+        db_user = await db.get_user(user.id)
 
-        if user.id not in db.user_cache:
+        if db_user is None:
             if user == ctx.author:
                 await ctx.send(
                     f"You are not registered with the bot, use `{prefix}register` to register."
                 )
+                return
             else:
-                await ctx.send(f"This user is not registered with the bot.")
+                await ctx.send("This user is not registered with the bot.")
+                return
 
-        db_user = db.user_cache[user.id]
         points = db_user.points
 
         if user == ctx.author:
@@ -170,5 +183,5 @@ class Leveling(commands.Cog):
             await ctx.send(f"{user} has {points} points (estimated)")
 
 
-def setup(bot):
+def setup(bot: commands.Bot):
     bot.add_cog(Leveling(bot))

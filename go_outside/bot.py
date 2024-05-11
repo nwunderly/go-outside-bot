@@ -16,7 +16,7 @@ async def prefix(bot: "GoOutside", message: disnake.Message, only_guild_prefix=F
     default = Settings.prefix
     if not message.guild:
         return commands.when_mentioned(bot, message) + [default]
-    config = await db.get_config(message.guild)
+    config = await db.get_config(message.guild.id)
     if config:
         p = config.prefix
     else:
@@ -48,7 +48,7 @@ class GoOutside(commands.AutoShardedBot):
     def run(self):
         """Custom run method, automatically passes token."""
         super().run(self.__token)
-    
+
     async def start(self, *args, **kwargs):
         """Custom start method, handles async setup before login."""
         try:
@@ -111,3 +111,7 @@ class GoOutside(commands.AutoShardedBot):
         Use this for any async tasks to be performed before the bot exits.
         """
         await db.Tortoise.close_connections()
+
+    async def prefix(self, message: disnake.Message):
+        """Gets the bot's prefix for a message in a guild. Does not include mention prefix."""
+        return await prefix(self, message, only_guild_prefix=True)

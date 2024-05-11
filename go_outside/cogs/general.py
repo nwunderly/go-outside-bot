@@ -83,5 +83,5 @@ class General(commands.Cog):
         await ctx.send(f"[Invite me to your server!]({Settings.invite_url})")
 
 
-def setup(bot):
+def setup(bot: commands.Bot):
     bot.add_cog(General(bot))

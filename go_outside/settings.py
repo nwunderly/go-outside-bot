@@ -22,9 +22,17 @@ class Settings:
     help_command = commands.MinimalHelpCommand()
     allowed_mentions = disnake.AllowedMentions.none()
 
-    cogs = ["jishaku", "go_outside.cogs.general", "go_outside.cogs.leveling"]
+    cogs = [
+        "jishaku",
+        "go_outside.cogs.admin",
+        "go_outside.cogs.general",
+        "go_outside.cogs.leveling",
+    ]
 
     activity = disnake.Game("outside")
 
     class Leveling:
         points_scaling = 1  # 1 for seconds, 3600 for hours
+
+    class Database:
+        batch_update_interval = 30  # seconds
